@@ -1,0 +1,50 @@
+{
+  "id": "webcam",
+  "name": "Browser/mobile camera service",
+  "uriSchemes": [
+    "webcam"
+  ],
+  "status": "available",
+  "category": "Hardware",
+  "summary": "Host a small camera-capture service on the LAN so a phone, tablet or any browser becomes a camera for this node. Serves a mobile getUserMedia page (rear camera) and a same-origin /ingest endpoint that forwards every captured frame to urirun-connector-camera's pipeline (OCR, barcodes/QR, inspection with alerts, scene description). No app install, no CORS.",
+  "description": "webcam:// turns 'add a camera over the network' into a URI. webcam://host/server/command/start launches an HTTP server (stdlib) bound to the LAN and returns the URL to open on a phone — the page uses the browser camera to capture frames and POSTs them to /ingest, which runs the configured `action` (analyze | inspect | barcodes | receipt | ocr | describe) via urirun-connector-camera. webcam://host/server/query/status reports the URL, health and capture count; webcam://host/server/command/stop stops it; webcam://host/captures/query/list returns recent frames with their OCR/barcode/inspection results. An optional shared `token` gates access. Ideal for mobile scanning into the same office flow used by usb:// + camera:// + ocr://.",
+  "requires": {
+    "system": [
+      "a LAN-reachable port",
+      "browser with getUserMedia (served over HTTPS or localhost for camera access)"
+    ],
+    "python": [
+      "urirun",
+      "urirun-connector-camera"
+    ],
+    "optional": [
+      "urirun-connector-ocr (richer OCR + img2nl)",
+      "pyzbar + libzbar0 (barcodes)"
+    ]
+  },
+  "keywords": [
+    "camera",
+    "webcam",
+    "mobile",
+    "browser",
+    "getusermedia",
+    "lan",
+    "server",
+    "ocr",
+    "barcode",
+    "qr",
+    "inspection",
+    "ingest",
+    "remote-capture"
+  ],
+  "publisher": "if-uri",
+  "routes": [
+    "webcam://host/captures/query/list",
+    "webcam://host/server/command/start",
+    "webcam://host/server/command/stop",
+    "webcam://host/server/query/status"
+  ],
+  "adapterKinds": [
+    "local-function"
+  ]
+}

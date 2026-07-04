@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "urirun-connector-camera-web"
+version = "0.1.0"
+description = "Host a LAN browser/mobile camera-capture service feeding the camera pipeline (webcam://)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+authors = [{ name = "if-uri" }]
+dependencies = ["urirun>=0.4.14", "urirun-connector-camera"]
+
+[project.optional-dependencies]
+test = ["pytest>=8", "pillow>=10"]
+
+[project.urls]
+Homepage = "https://connect.ifuri.com/connectors/webcam"
+Repository = "https://github.com/if-uri/urirun-connector-camera-web"
+
+[project.scripts]
+urirun-webcam = "urirun_connector_camera_web.core:main"
+
+[project.entry-points."urirun.bindings"]
+webcam = "urirun_connector_camera_web.core:urirun_bindings"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["urirun_connector_camera_web*"]
+
+[tool.setuptools.package-data]
+urirun_connector_camera_web = ["connector.manifest.json"]

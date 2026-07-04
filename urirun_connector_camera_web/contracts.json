@@ -1,0 +1,76 @@
+{
+  "contracts": {
+    "server/command/start": {
+      "version": "v1",
+      "effect": "command",
+      "reversible": false,
+      "inp": {
+        "port": "?int", "bind": "?str", "action": "?str", "captures_dir": "?str",
+        "title": "?str", "lang": "?str", "token": "?str", "https": "?bool",
+        "certfile": "?str", "keyfile": "?str"
+      },
+      "out": { "connector": "const:webcam", "kind": "const:stream", "live": "bool" },
+      "errors": ["degraded-backend", "precondition-unmet"],
+      "examples": [
+        {
+          "payload": { "port": 8780 },
+          "result": {
+            "ok": true, "connector": "webcam", "kind": "stream", "live": true,
+            "url": "https://203.0.113.5:8780", "pid": 1234
+          }
+        }
+      ]
+    },
+    "server/command/stop": {
+      "version": "v1",
+      "effect": "command",
+      "reversible": false,
+      "inp": {},
+      "out": { "connector": "const:webcam", "kind": "const:stream", "live": "bool", "stopped": "bool" },
+      "errors": [],
+      "examples": [
+        {
+          "payload": {},
+          "result": { "ok": true, "connector": "webcam", "kind": "stream", "live": false, "stopped": true, "pid": 1234 }
+        }
+      ]
+    },
+    "server/query/status": {
+      "version": "v1",
+      "effect": "query",
+      "reversible": false,
+      "inp": {},
+      "out": { "connector": "const:webcam", "kind": "const:stream", "live": "bool", "running": "bool" },
+      "errors": [],
+      "examples": [
+        {
+          "payload": {},
+          "result": { "ok": true, "connector": "webcam", "kind": "stream", "live": false, "running": false }
+        }
+      ]
+    },
+    "captures/query/list": {
+      "version": "v1",
+      "effect": "query",
+      "reversible": false,
+      "inp": { "limit": "?int", "captures_dir": "?str" },
+      "out": {
+        "connector": "const:webcam", "kind": "const:capture-list", "live": "bool",
+        "cache": "bool", "ttlSeconds": "int", "dir": "str", "count": "int",
+        "pruned": "int", "captures": "list"
+      },
+      "errors": [],
+      "examples": [
+        {
+          "payload": {},
+          "result": {
+            "ok": true, "connector": "webcam", "kind": "capture-list", "live": false,
+            "cache": true, "ttlSeconds": 600, "dir": "/tmp/caps", "count": 0,
+            "pruned": 0, "captures": []
+          }
+        }
+      ]
+    }
+  },
+  "wires": []
+}
