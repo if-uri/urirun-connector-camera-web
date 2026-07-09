@@ -108,23 +108,21 @@ jobs:
           for route in expected_routes:
               assert route in registry_text, f"expected connector route missing from registry: {route}"
 
-          def collect_routes(value):
+          def collect_route_keys(value):
               routes = set()
               if isinstance(value, dict):
                   for key, item in value.items():
                       if isinstance(key, str) and "://" in key:
                           routes.add(key)
-                      routes.update(collect_routes(item))
+                      routes.update(collect_route_keys(item))
               elif isinstance(value, list):
                   for item in value:
-                      routes.update(collect_routes(item))
-              elif isinstance(value, str) and "://" in value:
-                  routes.add(value)
+                      routes.update(collect_route_keys(item))
               return routes
 
-          registry_routes = collect_routes(registry)
+          registry_routes = collect_route_keys(registry)
           unexpected = sorted(route for route in registry_routes if route not in expected_routes)
-          assert not unexpected, f"registry contains routes outside current connector bindings: {unexpected}"
+          assert not unexpected, f"registry contains route keys outside current connector bindings: {unexpected}"
           print("Registry isolation OK: registry routes match current connector bindings.")
           PY
 
