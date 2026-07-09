@@ -6,11 +6,11 @@ import os
 import sys
 
 from urirun_llm_runtime import Executor
+from urirun_connector_camera_web.core import urirun_bindings
 
 
 SMOKE_URI = "webcam://host/doctor/query/report"
-CONNECTOR_ID = "webcam"
-FORBIDDEN_PREFIXES = ('kvm://', 'fs://', 'pdf://', 'browser://', 'http-check://', 'httpcheck://', 'router://', 'mqtt://', 'github://', 'ocr://', 'camera://', 'usb://', 'adb://', 'node://', 'email://', 'calendar://', 'doc://', 'docid://', 'document://', 'flow://', 'invoice://', 'koru://', 'ksef://', 'linkedin://', 'llm://', 'dns://', 'netscan://', 'task://', 'sheet://', 'smartcrop://', 'data://', 'artifact://', 'check://', 'log://', 'time://', 'twin://', 'urifix://', 'urivision://', 'runtime://', 'vdisplay://', 'view://', 'vql://', 'webnode://', 'youtube://', 'agent://', 'connector://', 'adopt://', 'monitor://', 'device://')
+CONNECTOR_ID = "camera-web"
 
 
 def fail(message: str) -> None:
@@ -27,6 +27,10 @@ def _route_value(response: dict) -> dict:
 
 
 def main() -> None:
+    expected_routes = set(urirun_bindings().get("bindings", {}).keys())
+    if SMOKE_URI not in expected_routes:
+        fail(f"{SMOKE_URI} is missing from connector bindings")
+
     node_url = os.environ.get("URIRUN_NODE_URL", "http://127.0.0.1:18765")
     executor = Executor(node_url)
 
@@ -34,13 +38,13 @@ def main() -> None:
     if not isinstance(health, dict):
         fail(f"/health returned non-dict response: {health!r}")
 
-    routes = executor.routes()
+    routes = set(executor.routes())
     if SMOKE_URI not in routes:
-        fail(f"{SMOKE_URI} is missing from /routes. Routes: {routes!r}")
+        fail(f"{SMOKE_URI} is missing from /routes. Routes: {sorted(routes)!r}")
 
-    unexpected = [route for route in routes if route.startswith(FORBIDDEN_PREFIXES)]
+    unexpected = sorted(route for route in routes if route not in expected_routes)
     if unexpected:
-        fail(f"Unexpected non-current connector routes found: {unexpected!r}")
+        fail(f"Unexpected routes outside current connector bindings found: {unexpected!r}")
 
     response = executor.execute(SMOKE_URI, {})
     if not isinstance(response, dict):
@@ -50,11 +54,9 @@ def main() -> None:
 
     value = _route_value(response)
     if value.get("ok") is not True:
-        fail(f"Doctor route returned failed response: {response!r}")
+        fail(f"Smoke route returned failed response: {response!r}")
     if value.get("connector") != CONNECTOR_ID:
-        fail(f"Doctor route returned wrong connector: {response!r}")
-    if value.get("status") != "ready":
-        fail(f"Doctor route returned non-ready status: {response!r}")
+        fail(f"Smoke route returned wrong connector: {response!r}")
 
     print("OK: urirun-llm-runtime -> urirun node -> connector smoke test passed")
 

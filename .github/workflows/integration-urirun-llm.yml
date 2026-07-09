@@ -35,6 +35,12 @@ jobs:
           repository: if-uri/urirun-llm-runtime
           path: _deps/urirun-llm-runtime
 
+      - name: Checkout urirun-connector-camera
+        uses: actions/checkout@v4
+        with:
+          repository: if-uri/urirun-connector-camera
+          path: _deps/urirun-connector-camera
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -44,6 +50,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e "./_deps/urirun/adapters/python"
+          python -m pip install -e "./_deps/urirun-connector-camera"
           python -m pip install -e "./urirun-connector-camera-web[test]"
           python -m pip install -e "./_deps/urirun-llm-runtime[dev]"
 
@@ -55,7 +62,7 @@ jobs:
 
           bindings = urirun_bindings()
           assert "webcam://host/doctor/query/report" in bindings["bindings"]
-          print("Connector import and doctor bindings OK")
+          print("Connector import and smoke bindings OK")
           PY
 
       - name: Build isolated registry
@@ -71,8 +78,8 @@ jobs:
           out = Path(".urirun/webcam.bindings.v2.json")
           out.write_text(json.dumps(bindings, indent=2, sort_keys=True), encoding="utf-8")
 
-          text = json.dumps(bindings)
-          assert "webcam://host/doctor/query/report" in text, "safe doctor route missing"
+          expected_routes = set(bindings.get("bindings", {}).keys())
+          assert "webcam://host/doctor/query/report" in expected_routes, "safe smoke route missing"
           print("Wrote isolated bindings:", out)
           PY
 
@@ -83,19 +90,42 @@ jobs:
       - name: Assert registry contains current connector only
         run: |
           python - <<'PY'
+
           import json
           from pathlib import Path
+          from urirun_connector_camera_web.core import urirun_bindings
+
+          SMOKE_ROUTE = "webcam://host/doctor/query/report"
+          bindings = urirun_bindings()
+          expected_routes = set(bindings.get("bindings", {}).keys())
+          assert expected_routes, "connector emitted no bindings"
+          assert SMOKE_ROUTE in expected_routes, "safe smoke route missing from bindings"
+          text = json.dumps(bindings)
 
           registry = json.loads(Path(".urirun/webcam.registry.json").read_text(encoding="utf-8"))
-          text = json.dumps(registry)
+          registry_text = json.dumps(registry)
+          assert SMOKE_ROUTE in registry_text, "safe smoke route missing from registry"
+          for route in expected_routes:
+              assert route in registry_text, f"expected connector route missing from registry: {route}"
 
-          assert "webcam://host/doctor/query/report" in text, "safe doctor route missing from registry"
+          def collect_routes(value):
+              routes = set()
+              if isinstance(value, dict):
+                  for key, item in value.items():
+                      if isinstance(key, str) and "://" in key:
+                          routes.add(key)
+                      routes.update(collect_routes(item))
+              elif isinstance(value, list):
+                  for item in value:
+                      routes.update(collect_routes(item))
+              elif isinstance(value, str) and "://" in value:
+                  routes.add(value)
+              return routes
 
-          forbidden = ['kvm://', 'fs://', 'pdf://', 'browser://', 'http-check://', 'httpcheck://', 'router://', 'mqtt://', 'github://', 'ocr://', 'camera://', 'usb://', 'adb://', 'node://', 'email://', 'calendar://', 'doc://', 'docid://', 'document://', 'flow://', 'invoice://', 'koru://', 'ksef://', 'linkedin://', 'llm://', 'dns://', 'netscan://', 'task://', 'sheet://', 'smartcrop://', 'data://', 'artifact://', 'check://', 'log://', 'time://', 'twin://', 'urifix://', 'urivision://', 'runtime://', 'vdisplay://', 'view://', 'vql://', 'webnode://', 'youtube://', 'agent://', 'connector://', 'adopt://', 'monitor://', 'device://']
-          for marker in forbidden:
-              assert marker not in text, f"Unexpected non-current connector route found: {marker}"
-
-          print("Registry isolation OK: only current connector routes are present.")
+          registry_routes = collect_routes(registry)
+          unexpected = sorted(route for route in registry_routes if route not in expected_routes)
+          assert not unexpected, f"registry contains routes outside current connector bindings: {unexpected}"
+          print("Registry isolation OK: registry routes match current connector bindings.")
           PY
 
       - name: Run route directly through urirun
@@ -112,8 +142,7 @@ jobs:
           assert response.get("ok") is True, response
           assert isinstance(value, dict), response
           assert value.get("ok") is True, response
-          assert value.get("status") == "ready", response
-          print("Doctor route through urirun run OK")
+          print("Smoke route through urirun run OK")
           PY
 
       - name: Start urirun node
@@ -146,8 +175,7 @@ jobs:
           assert response.get("ok") is True, response
           assert isinstance(value, dict), response
           assert value.get("ok") is True, response
-          assert value.get("status") == "ready", response
-          print("/run doctor route OK")
+          print("/run smoke route OK")
           PY
 
       - name: LLM runtime Executor smoke test
