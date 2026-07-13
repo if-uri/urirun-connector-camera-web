@@ -10,7 +10,7 @@ from urirun_connector_camera_web.core import urirun_bindings
 
 
 SMOKE_URI = "webcam://host/doctor/query/report"
-CONNECTOR_ID = "camera-web"
+CONNECTOR_ID = "webcam"
 
 
 def fail(message: str) -> None:
